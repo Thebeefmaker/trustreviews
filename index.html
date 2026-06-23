@@ -1,0 +1,304 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrustReviews — AI-Verified Community Reviews</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    header h1 {
+      font-size: 2rem;
+      color: #f97316;
+      font-weight: 800;
+    }
+    header p {
+      color: #999;
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+    .badge {
+      display: inline-block;
+      background: #1a1a1a;
+      border: 1px solid #f97316;
+      color: #f97316;
+      font-size: 0.75rem;
+      padding: 2px 10px;
+      border-radius: 99px;
+      margin-top: 10px;
+    }
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      color: #f97316;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #f0f0f0;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: #f97316;
+    }
+    textarea { height: 90px; resize: none; }
+    button {
+      width: 100%;
+      background: #f97316;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+}
+    button:disabled { background: #7c3a0e; cursor: not-allowed; }
+    .status {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #f97316;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+    .review-item {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .review-item .subject {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .review-item .text {
+      color: #ccc;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .review-item .meta {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .verdict {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    .genuine { color: #22c55e; }
+    .fake { color: #ef4444; }
+    .pending { color: #f97316; }
+    .empty {
+      text-align: center;
+      color: #555;
+      padding: 30px 0;
+      font-size: 0.9rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #111;
+      color: #aaa;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-align: center;
+    }
+    .tab.active {
+      background: #f97316;
+      color: white;
+      border-color: #f97316;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+
+<header>
+  <h1>🔍 TrustReviews</h1>
+  <p>AI-verified community reviews powered by GenLayer</p>
+  <span class="badge">⚡ Intelligent Contract on GenLayer</span>
+</header>
+
+<!-- Submit Form -->
+<div class="card">
+  <h2>✍️ Submit a Review</h2>
+
+  <label>What are you reviewing?</label>
+  <input type="text" id="subject" placeholder="e.g. Binance, Konga, a freelancer..." />
+
+  <label>Your review</label>
+  <textarea id="reviewText" placeholder="Write your honest experience..."></textarea>
+
+  <label>Your name or handle</label>
+  <input type="text" id="reviewer" placeholder="e.g. @thebeefmaker" />
+
+  <button id="submitBtn" onclick="submitReview()">Submit for AI Verification</button>
+  <div class="status" id="statusMsg"></div>
+</div>
+
+<!-- Reviews List -->
+<div class="card">
+  <h2>📋 Community Reviews</h2>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-all" onclick="switchTab('all')">All Reviews</div>
+    <div class="tab" id="tab-verified" onclick="switchTab('verified')">✅ Verified Only</div>
+  </div>
+
+  <div id="reviewsList"></div>
+</div>
+
+<script>
+  // ⚠️ Replace this with your deployed contract address after deploying on GenLayer Studio
+  const CONTRACT_ADDRESS = "YOUR_CONTRACT_ADDRESS_HERE";
+  const RPC_URL = "https://studio.genlayer.com/api";
+
+  let currentTab = 'all';
+  let allReviews = [];
+
+  async function submitReview() {
+    const subject = document.getElementById('subject').value.trim();
+    const reviewText = document.getElementById('reviewText').value.trim();
+    const reviewer = document.getElementById('reviewer').value.trim();
+
+    if (!subject || !reviewText || !reviewer) {
+      setStatus("⚠️ Please fill in all fields.");
+      return;
+    }
+
+    setStatus("🤖 Sending to GenLayer AI for verification...");
+    document.getElementById('submitBtn').disabled = true;
+
+    try {
+      const response = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'gen_sendTransaction',
+          params: [{
+            to: CONTRACT_ADDRESS,
+            data: {
+              method: 'submit_review',
+              args: [subject, reviewText, reviewer]
+            }
+          }],
+          id: 1
+        })
+      });
+
+      const data = await response.json();
+      if (data.result) {
+        setStatus("✅ Review submitted! AI is verifying...");
+        document.getElementById('subject').value = '';
+        document.getElementById('reviewText').value = '';
+        document.getElementById('reviewer').value = '';
+        setTimeout(loadReviews, 3000);
+      } else {
+        setStatus("❌ Error submitting. Check contract address.");
+      }
+    } catch (e) {
+      setStatus("❌ Could not connect to GenLayer. Check your contract address.");
+    }
+
+    document.getElementById('submitBtn').disabled = false;
+  }
+
+  async function loadReviews() {
+    try {
+      const response = await fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'gen_call',
+          params: [{
+            to: CONTRACT_ADDRESS,
+            data: { method: 'get_reviews', args: [] }
+          }],
+          id: 2
+        })
+      });
+
+      const data = await response.json();
+      allReviews = data.result || [];
+      renderReviews();
+    } catch (e) {
+      document.getElementById('reviewsList').innerHTML =
+        '<div class="empty">Could not load reviews. Deploy your contract first.</div>';
+    }
+  }
+
+  function renderReviews() {
+    const list = document.getElementById('reviewsList');
+    const reviews = currentTab === 'verified'
+      ? allReviews.filter(r => r.verified)
+      : allReviews;
+
+    if (reviews.length === 0) {
+      list.innerHTML = '<div class="empty">No reviews yet. Be the first!</div>';
+      return;
+    }
+
+    list.innerHTML = [...reviews].reverse().map(r => `
+      <div class="review-item">
+        <div class="subject">${r.subject}</div>
+        <div class="text">${r.review}</div>
+        <div class="verdict ${r.verified ? 'genuine' : 'fake'}">${r.status}</div>
+        <div class="meta">by ${r.reviewer}</div>
+      </div>
+    `).join('');
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-all').className = 'tab' + (tab === 'all' ? ' active' : '');
+    document.getElementById('tab-verified').className = 'tab' + (tab === 'verified' ? ' active' : '');
+    renderReviews();
+  }
+
+  function setStatus(msg) {
+    document.getElementById('statusMsg').textContent = msg;
+  }
+
+  loadReviews();
+</script>
+</body>
+</html>
