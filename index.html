@@ -31,6 +31,8 @@
     .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
     .tab { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #333; background: #111; color: #aaa; font-size: 0.85rem; cursor: pointer; text-align: center; }
     .tab.active { background: #f97316; color: white; border-color: #f97316; font-weight: 700; }
+    .info-box { background: #1a1a1a; border: 1px solid #f97316; border-radius: 10px; padding: 14px; margin-bottom: 20px; font-size: 0.85rem; color: #aaa; line-height: 1.6; }
+    .info-box a { color: #f97316; }
   </style>
 </head>
 <body>
@@ -40,16 +42,8 @@
   <span class="badge">⚡ Intelligent Contract on GenLayer</span>
 </header>
 
-<div class="card">
-  <h2>✍️ Submit a Review</h2>
-  <label>What are you reviewing?</label>
-  <input type="text" id="subject" placeholder="e.g. Binance, Konga, a freelancer..." />
-  <label>Your review</label>
-  <textarea id="reviewText" placeholder="Write your honest experience..."></textarea>
-  <label>Your name or handle</label>
-  <input type="text" id="reviewer" placeholder="e.g. @thebeefmaker" />
-  <button id="submitBtn" onclick="submitReview()">Submit for AI Verification</button>
-  <div class="status" id="statusMsg"></div>
+<div class="info-box">
+  💡 <strong>How to submit a review:</strong> Go to <a href="https://studio.genlayer.com" target="_blank">GenLayer Studio</a>, open your deployed contract at <strong>0x7E03...82F6</strong>, use the <strong>submit_review</strong> method under Write Methods, then come back here to see your verified review appear below.
 </div>
 
 <div class="card">
@@ -58,44 +52,27 @@
     <div class="tab active" id="tab-all" onclick="switchTab('all')">All Reviews</div>
     <div class="tab" id="tab-verified" onclick="switchTab('verified')">✅ Verified Only</div>
   </div>
-  <div id="reviewsList"></div>
+  <div id="reviewsList"><div class="empty">Loading reviews...</div></div>
+</div>
+
+<div class="card">
+  <h2>✍️ Submit via GenLayer Studio</h2>
+  <p style="color:#aaa; font-size:0.9rem; margin-bottom:12px;">Open the contract in GenLayer Studio and call <strong style="color:#f97316">submit_review</strong> with these fields:</p>
+  <label>subject</label>
+  <input type="text" id="subject" placeholder="e.g. Binance, Konga, a freelancer..." />
+  <label>review_text</label>
+  <textarea id="reviewText" placeholder="Write your honest experience..."></textarea>
+  <label>reviewer</label>
+  <input type="text" id="reviewer" placeholder="e.g. @thebeefmaker" />
+  <button onclick="copyAndOpen()">📋 Copy & Open GenLayer Studio</button>
+  <div class="status" id="statusMsg"></div>
 </div>
 
 <script>
   const CONTRACT_ADDRESS = "0x7E03A178AD422fC9bcf89A31e5f09dc3193582F6";
   const RPC_URL = "https://studio.genlayer.com/api";
-
   let currentTab = 'all';
   let allReviews = [];
-
-  async function submitReview() {
-    const subject = document.getElementById('subject').value.trim();
-    const reviewText = document.getElementById('reviewText').value.trim();
-    const reviewer = document.getElementById('reviewer').value.trim();
-    if (!subject || !reviewText || !reviewer) { setStatus("⚠️ Please fill in all fields."); return; }
-    setStatus("🤖 Sending to GenLayer AI for verification...");
-    document.getElementById('submitBtn').disabled = true;
-    try {
-      const response = await fetch(RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'gen_sendTransaction', params: [{ to: CONTRACT_ADDRESS, data: { method: 'submit_review', args: [subject, reviewText, reviewer] } }], id: 1 })
-      });
-      const data = await response.json();
-      if (data.result) {
-        setStatus("✅ Review submitted! AI is verifying...");
-        document.getElementById('subject').value = '';
-        document.getElementById('reviewText').value = '';
-        document.getElementById('reviewer').value = '';
-        setTimeout(loadReviews, 4000);
-      } else {
-        setStatus("❌ Error submitting. Please try again.");
-      }
-    } catch (e) {
-      setStatus("❌ Could not connect to GenLayer.");
-    }
-    document.getElementById('submitBtn').disabled = false;
-  }
 
   async function loadReviews() {
     try {
@@ -108,14 +85,14 @@
       allReviews = data.result || [];
       renderReviews();
     } catch (e) {
-      document.getElementById('reviewsList').innerHTML = '<div class="empty">Could not load reviews.</div>';
+      document.getElementById('reviewsList').innerHTML = '<div class="empty">Could not load reviews. Make sure the contract is deployed.</div>';
     }
   }
 
   function renderReviews() {
     const list = document.getElementById('reviewsList');
     const reviews = currentTab === 'verified' ? allReviews.filter(r => r.verified) : allReviews;
-    if (reviews.length === 0) { list.innerHTML = '<div class="empty">No reviews yet. Be the first!</div>'; return; }
+    if (reviews.length === 0) { list.innerHTML = '<div class="empty">No reviews yet. Submit one via GenLayer Studio!</div>'; return; }
     list.innerHTML = [...reviews].reverse().map(r => `
       <div class="review-item">
         <div class="subject">${r.subject}</div>
@@ -133,9 +110,19 @@
     renderReviews();
   }
 
-  function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+  function copyAndOpen() {
+    const subject = document.getElementById('subject').value.trim();
+    const reviewText = document.getElementById('reviewText').value.trim();
+    const reviewer = document.getElementById('reviewer').value.trim();
+    if (!subject || !reviewText || !reviewer) { document.getElementById('statusMsg').textContent = '⚠️ Fill in all fields first.'; return; }
+    const text = `subject: ${subject}\nreview_text: ${reviewText}\nreviewer: ${reviewer}`;
+    navigator.clipboard.writeText(text).catch(()=>{});
+    document.getElementById('statusMsg').textContent = '✅ Copied! Now paste into GenLayer Studio → submit_review';
+    window.open('https://studio.genlayer.com', '_blank');
+  }
 
   loadReviews();
+  setInterval(loadReviews, 15000);
 </script>
 </body>
 </html>
