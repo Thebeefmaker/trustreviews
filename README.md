@@ -19,7 +19,7 @@ Only verified reviews are stored and displayed on-chain.
 - **AI Layer:** GenLayer's `gl.exec_prompt()`
 
 ## Live App
-[View on GitHub Pages](https://thebeefmaker.github.io/trustreviews)
+[View on GitHub Pages](https://thebeefmaker.github.io/trustreviews
 
 ## Contract
 Deploy `contract.py` on [GenLayer Studio](https://studio.genlayer.com)
